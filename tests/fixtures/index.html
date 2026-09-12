@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Example Application</title>
+</head>
+<body>
+  <a href="/login">login</a>
+  <a href="products">relative products</a>
+  <a href="http://10.10.10.10/search?q=test&amp;page=2">absolute search</a>
+  <a href="https://google.com/external">external</a>
+  <a href="/page#section">fragment</a>
+  <a href="mailto:nobody@example.invalid">mail</a>
+  <a href="javascript:void(0)">js</a>
+  <form action="/search" method="GET">
+    <input type="text" name="q">
+    <input type="hidden" name="ref">
+  </form>
+  <form action="/login" method="POST">
+    <input name="username">
+    <input type="password" name="password">
+    <textarea name="notes"></textarea>
+    <select name="role"><option>user</option></select>
+  </form>
+</body>
+</html>

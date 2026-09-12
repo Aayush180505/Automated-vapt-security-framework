@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ report.title }} — {{ report.target }}</title>
+  <style>
+    :root { --ink:#1a1a1a; --muted:#555; --line:#d0d0d0; --bg:#f7f7f5; --card:#fff; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Segoe UI", Calibri, Arial, sans-serif; color:var(--ink); background:var(--bg); line-height:1.5; }
+    .page { max-width: 920px; margin: 0 auto; padding: 32px 24px 64px; background:var(--card); }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    h2 { font-size: 1.2rem; border-bottom: 2px solid var(--ink); padding-bottom: 6px; margin-top: 2rem; }
+    h3 { font-size: 1.05rem; margin-bottom: 8px; }
+    .meta dt { font-weight: 600; float:left; clear:left; width: 160px; }
+    .meta dd { margin: 0 0 6px 170px; }
+    table { width:100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { border: 1px solid var(--line); padding: 6px 8px; text-align:left; vertical-align: top; }
+    th { background: #eee; }
+    .badge { display:inline-block; padding: 1px 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: .04em; color:#fff; }
+    .critical { background:#7f1d1d; }
+    .high { background:#b45309; }
+    .medium { background:#a16207; }
+    .low { background:#3f6212; }
+    .info { background:#334155; }
+    .failed { color:#7f1d1d; font-weight:700; }
+    .finding { border:1px solid var(--line); padding: 12px 14px; margin: 12px 0; }
+    .muted { color: var(--muted); }
+    ul.plain { padding-left: 1.2rem; }
+    @media print {
+      body { background:#fff; }
+      .page { max-width:none; padding:0; }
+      .finding { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <article class="page">
+    <header>
+      <p class="muted">Automated VAPT &amp; Security Assessment Framework</p>
+      <h1>{{ report.title }}</h1>
+      <dl class="meta">
+        <dt>Target</dt><dd>{{ report.target }}</dd>
+        <dt>Scan ID</dt><dd>{{ report.scan_id }}</dd>
+        <dt>Assessment Date</dt>
+        <dd>{% if report.started_at %}{{ report.started_at.strftime("%Y-%m-%d") }}{% else %}Not recorded{% endif %}</dd>
+        <dt>Status</dt>
+        <dd class="{% if report.status.lower() == 'failed' %}failed{% endif %}">{{ report.status|upper }}</dd>
+      </dl>
+      {% if report.status.lower() == 'failed' %}
+      <p class="failed">This record is marked FAILED. Any findings below are partial and must not be presented as a completed assessment.</p>
+      {% endif %}
+      <p class="muted">{{ report.generated_note }}</p>
+    </header>
+
+    <section>
+      <h2>1. Executive Summary</h2>
+      <p>
+        Authorized assessment of <strong>{{ report.target }}</strong>
+        {% if report.started_at %}on {{ report.started_at.strftime("%Y-%m-%d") }}{% endif %}.
+        Status: <strong>{{ report.status|upper }}</strong>.
+        Total findings recorded: <strong>{{ report.total_findings }}</strong>.
+        Highest recorded severity: <strong>{{ (report.highest_severity or "none")|upper }}</strong>.
+        Average risk score: <strong>{{ "%.1f"|format(report.average_risk) }}</strong>.
+        Critical/High findings: <strong>{{ report.critical_high_count }}</strong>.
+      </p>
+      {% if report.total_findings == 0 %}
+      <p>No vulnerabilities were identified by the configured assessment plugins. This does not mean the target is secure.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>2. Scope</h2>
+      <dl class="meta">
+        <dt>Normalized target</dt><dd>{{ report.target }}</dd>
+        <dt>Hostname</dt><dd>{{ report.hostname or "Not recorded" }}</dd>
+        <dt>IP address</dt><dd>{{ report.ip_address or "Not recorded" }}</dd>
+        <dt>Port</dt><dd>{{ report.port if report.port is not none else "Not recorded" }}</dd>
+        <dt>Scheme</dt><dd>{{ report.scheme or "Not recorded" }}</dd>
+      </dl>
+      <p>{{ report.authorized_use }}</p>
+    </section>
+
+    <section>
+      <h2>3. Methodology</h2>
+      <ol>
+        {% for step in report.methodology %}
+        <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section>
+      <h2>4. Discovered Services</h2>
+      {% if report.services %}
+      <table>
+        <thead>
+          <tr><th>Host</th><th>Port</th><th>Protocol</th><th>State</th><th>Service</th><th>Product</th><th>Version</th></tr>
+        </thead>
+        <tbody>
+          {% for svc in report.services %}
+          <tr>
+            <td>{{ svc.host }}</td>
+            <td>{{ svc.port }}</td>
+            <td>{{ svc.protocol }}</td>
+            <td>{{ svc.state }}</td>
+            <td>{{ svc.service }}</td>
+            <td>{{ svc.product }}</td>
+            <td>{{ svc.version }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>No services were recorded for this scan.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>5. Web Attack Surface</h2>
+      {% if report.attack_surface_persisted and report.endpoints %}
+      <table>
+        <thead><tr><th>Method</th><th>URL</th></tr></thead>
+        <tbody>
+          {% for ep in report.endpoints %}
+          <tr><td>{{ ep.method }}</td><td>{{ ep.url }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>Web attack-surface details (crawled URLs, forms, and parameters) are produced during enumeration. They are not stored in the Phase 7 scan-history schema and are not reconstructed here.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>6. Risk Summary</h2>
+      <p>Values below are copied from the completed assessment. They were not recalculated for this report.</p>
+      <dl class="meta">
+        <dt>Total findings</dt><dd>{{ report.total_findings }}</dd>
+        <dt>Average risk</dt><dd>{{ "%.2f"|format(report.average_risk) }}</dd>
+        <dt>Maximum risk</dt><dd>{{ "%.2f"|format(report.maximum_risk) }}</dd>
+        <dt>Highest risk band</dt><dd>{{ (report.highest_risk_band or "none")|upper }}</dd>
+      </dl>
+      <p><strong>Severity:</strong>
+        {% for key, value in report.severity_counts.items() %}{{ key|upper }}={{ value }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% if not report.severity_counts %}none{% endif %}
+      </p>
+      <p><strong>Confidence:</strong>
+        {% for key, value in report.confidence_counts.items() %}{{ key|upper }}={{ value }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% if not report.confidence_counts %}none{% endif %}
+      </p>
+      <p><strong>Risk bands:</strong>
+        {% for key, value in report.risk_band_counts.items() %}{{ key|upper }}={{ value }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% if not report.risk_band_counts %}none{% endif %}
+      </p>
+      <p><strong>Priority:</strong>
+        {% for key, value in report.priority_counts.items() %}{{ key|upper }}={{ value }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% if not report.priority_counts %}none{% endif %}
+      </p>
+    </section>
+
+    <section>
+      <h2>7. Findings</h2>
+      {% if not report.findings %}
+      <p>No vulnerabilities were identified by the configured assessment plugins. This does not mean the target is secure.</p>
+      {% endif %}
+      {% for finding in report.findings %}
+      <article class="finding">
+        <h3>
+          <span class="badge {{ finding.severity|lower }}">{{ finding.severity|upper }}</span>
+          {{ finding.title }}
+        </h3>
+        <dl class="meta">
+          <dt>Fingerprint</dt><dd>{{ finding.fingerprint or "Not recorded" }}</dd>
+          <dt>Scanner</dt><dd>{{ finding.scanner }}</dd>
+          <dt>Category</dt><dd>{{ finding.category or "Not recorded" }}</dd>
+          <dt>Severity</dt><dd>{{ finding.severity|upper }}</dd>
+          <dt>Confidence</dt><dd>{{ finding.confidence|upper }}</dd>
+          <dt>Risk score</dt><dd>{% if finding.risk_score is not none %}{{ finding.risk_score }}{% else %}Not recorded{% endif %}</dd>
+          <dt>Risk band</dt><dd>{{ (finding.risk_band or "not recorded")|upper }}</dd>
+          <dt>Priority</dt><dd>{{ (finding.priority or "not recorded")|upper }}</dd>
+          <dt>Affected URL</dt><dd>{{ finding.affected_url or "Not recorded" }}</dd>
+          <dt>Parameter</dt><dd>{{ finding.parameter or "Not applicable" }}</dd>
+        </dl>
+        <p>{{ finding.description }}</p>
+        {% if finding.risk_explanation %}<p class="muted">{{ finding.risk_explanation }}</p>{% endif %}
+        <h4>Evidence</h4>
+        {% if finding.evidence_description or finding.evidence_excerpt %}
+        <p>{{ finding.evidence_description or "" }}</p>
+        {% if finding.evidence_url %}<p>URL: {{ finding.evidence_url }}</p>{% endif %}
+        {% if finding.evidence_method %}<p>Method: {{ finding.evidence_method }}</p>{% endif %}
+        {% if finding.evidence_status_code is not none %}<p>Status: {{ finding.evidence_status_code }}</p>{% endif %}
+        {% if finding.evidence_excerpt %}<pre>{{ finding.evidence_excerpt }}</pre>{% endif %}
+        {% else %}
+        <p class="muted">No evidence excerpt was stored for this finding.</p>
+        {% endif %}
+        <h4>Remediation</h4>
+        <p>{{ finding.remediation or "Remediation guidance not available." }}</p>
+      </article>
+      {% endfor %}
+    </section>
+
+    <section>
+      <h2>8. Limitations</h2>
+      <ul class="plain">
+        {% for item in report.limitations %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </article>
+</body>
+</html>
